@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Office.Interop.Excel;
 using System.Configuration;
+using Sap.Data.Hana;
 
 namespace STR_GP_CONVERT_DOCUMENT
 {
@@ -17,7 +18,7 @@ namespace STR_GP_CONVERT_DOCUMENT
     {
         private System.Threading.Timer timer = null;
         private static bool procesoTerminado;
-
+        public static List<string> wizardNames = new List<string>();
         public Service1()
         {
             InitializeComponent();
@@ -39,42 +40,17 @@ namespace STR_GP_CONVERT_DOCUMENT
             {
                 procesoTerminado = false;
 
+                Query query = new Query();
 
-                string origen = ConfigurationSettings.AppSettings["rutaOrigen"].ToString();
-                string destino = ConfigurationSettings.AppSettings["rutaDestino"].ToString();
-
-                foreach (var archivo in Directory.GetFiles(origen, "*.csv", SearchOption.AllDirectories))
+                if (query.ValidationQ())
                 {
-                    Application excelApp = new Application();
-                    Workbook workbook = excelApp.Workbooks.Open(archivo);
-                    Worksheet worksheet = workbook.Worksheets[1];
-
-                    string archivoNombre = Path.GetFileNameWithoutExtension(archivo) + ".txt";
-                    string archivoDestino = Path.Combine(destino, archivoNombre);
-
-                    using (StreamWriter writer = new StreamWriter(archivoDestino))
+                    foreach (var wzn in wizardNames)
                     {
-                        Range usedRange = worksheet.UsedRange;
+                        query.Ejecuta(wzn);
 
-                        foreach (Range row in usedRange.Rows)
-                        {
-                            string line = "";
-                            foreach (Range cell in row.Cells)
-                            {
-                                line += cell.Value; // Puedes cambiar el separador si es necesario
-                            }
-                            line = line.TrimEnd(';'); // Quitamos el último ;
-                            line = line.Replace(";", " "); // Reemplazamos ; por espacio
-                            writer.WriteLine(line);
-                        }
+
                     }
-
-                    workbook.Close(false);
-                    excelApp.Quit();
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 }
-
                 procesoTerminado = true;
             }
         }
