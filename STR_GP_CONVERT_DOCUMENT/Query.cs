@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace STR_GP_CONVERT_DOCUMENT
 {
-    public  class Query
+    public class Query
     {
         HanaConnection hanaConnection;
         HanaCommand cmd;
@@ -23,19 +23,19 @@ namespace STR_GP_CONVERT_DOCUMENT
         HanaDataReader hdrsss;
         public string pathDest;
         //string coneecion = null; 
-        public  Query()
+        public Query()
         {
             //coneecion = ConfigurationManager.ConnectionStrings["hana"].ConnectionString; 
             hanaConnection = new HanaConnection(ConfigurationManager.ConnectionStrings["hana"].ConnectionString);
 
         }
 
-        public  bool ValidationQ()
+        public bool ValidationQ()
         {
             string dia = ConfigurationManager.AppSettings["dia"];
             string query = $"SELECT \"WizardName\" FROM OPWZ WHERE DAYS_BETWEEN(\"PmntDate\",NOW()) < {dia}";
 
-            pathDest = ConfigurationManager.AppSettings["rutaDestino"]; 
+            pathDest = ConfigurationManager.AppSettings["rutaDestino"];
 
             try
             {
@@ -56,7 +56,7 @@ namespace STR_GP_CONVERT_DOCUMENT
                 hanaConnection.Close();
 
                 if (Service1.wizardNames.Count > 0)
-                    return true;            
+                    return true;
                 return false;
             }
             catch (Exception)
@@ -64,11 +64,13 @@ namespace STR_GP_CONVERT_DOCUMENT
                 if (hanaConnection.State == System.Data.ConnectionState.Open)
                     hanaConnection.Close();
                 return false;
-            }      
+            }
         }
 
         public void Ejecuta(string wzn)
         {
+            string[] lines = { "fsaf", "zz" };
+            File.WriteAllLines(pathDest + "miArchivo.txt", lines);
 
             RetrnList(wzn);
         }
@@ -76,45 +78,67 @@ namespace STR_GP_CONVERT_DOCUMENT
         public List<SBODataField> RetrnList(string wizzad)
         {
             List<string> datas = new List<string>();
+
             List<string> querys = new List<string>();
             //querys.Add("STR_PAGOSMASIVOSBCP_CV2_MacroBCP");
             //querys.Add("STR_PAGOSMASIVOSBCP_DAV2_MacroBCP");
-            querys.Add("CALOPWS");
+            querys.Add("STR_PAGOSMASIVOSBCP_CV2_MacroBCP");
+            querys.Add("STR_PAGOSMASIVOSBCP_DAV2_MacroBCP");
             List<SBODataField> lstSBODataField = new List<SBODataField>();
             SBODataField data = null;
+
 
             foreach (var q in querys)
             {
                 var subIdFila = 0;
                 hanaConnection.Open();
 
-                string query = $"CALL {q} ('{wizzad}')"; 
+                string query = $"CALL {q}('{wizzad}')";
                 cmd = new HanaCommand(query, hanaConnection);
                 hdr = cmd.ExecuteReader();
 
                 while (hdr.Read())
                 {
+                    string proveedor = "";
                     string linea = "";
                     for (int i = 0; i < hdr.FieldCount; i++)
                     {
-                        linea += hdr[i].ToString();
+                        if (!hdr.GetDataTypeName(i).ToString().Equals("Prov_PayeeTaxNo"))
+                            linea += hdr[i].ToString();
+                        else
+                        {
+                            proveedor = hdr[i].ToString();
+                            datas.Add(linea);
 
-                        //data = new SBODataField();
-                        //data.IDFIla = Convert.ToInt32(hdr.GetName(i).Split('_')[0]);
-                        //data.SubIDFIla = subIdFila;
-                        //data.Value = hdr[i].ToString();
-                        
+                            query = $"CALL STR_PAGOSMASIVOSBCP_DBV2_MacroBCP('{wizzad}','{proveedor}')";
 
-                        //lstSBODataField.Add(data);
 
+                            cmds = new HanaCommand(query, hanaConnection);
+                            hdrs = cmds.ExecuteReader();
+
+                            while (hdrs.Read())
+                            {
+                                linea = string.Empty;
+                                for (int t = 0; t < hdrs.FieldCount; t++)
+                                {
+                                    linea += hdrs[t].ToString();
+                                }
+                                datas.Add(linea);
+
+                            }
+
+                            linea = string.Empty;
+
+                        }
                     }
-                    subIdFila++;    
+                    if (!string.IsNullOrEmpty(linea)) datas.Add(linea);
                 }
-                
-
-
 
             }
+
+            File.WriteAllText(pathDest, string.Join("\n", datas));
+
+
             return lstSBODataField;
 
         }

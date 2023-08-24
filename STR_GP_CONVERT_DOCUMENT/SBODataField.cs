@@ -10,7 +10,7 @@ namespace STR_GP_CONVERT_DOCUMENT
     {
         public int IDFIla { get; set; }
         public int SubIDFIla { get; set; }
-        public SAPbobsCOM.BoFieldTypes DataType { get; set; }
+        // public SAPbobsCOM.BoFieldTypes DataType { get; set; }
         public string Value { get; set; }
     }
 }

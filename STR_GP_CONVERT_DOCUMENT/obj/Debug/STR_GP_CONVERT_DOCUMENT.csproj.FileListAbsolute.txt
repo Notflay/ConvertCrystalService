@@ -41,3 +41,5 @@ C:\Users\DURBAY\Source\Repos\ConvertCrystalService\STR_GP_CONVERT_DOCUMENT\bin\D
 C:\Users\DURBAY\Source\Repos\ConvertCrystalService\STR_GP_CONVERT_DOCUMENT\bin\Debug\Sap.Data.Hana.v4.5.dll.config
 C:\Users\DURBAY\source\repos\ConvertCrystalService\STR_GP_CONVERT_DOCUMENT\obj\Debug\Interop.SAPbobsCOM.dll
 C:\Users\DURBAY\source\repos\ConvertCrystalService\STR_GP_CONVERT_DOCUMENT\obj\Debug\STR_GP_CONVERT_DOCUMENT.csproj.ResolveComReference.cache
+D:\Archivos\Code\C#_Workspace\STR_GP_CONVERT_DOCUMENT\STR_GP_CONVERT_DOCUMENT\bin\Debug\Sap.Data.Hana.v4.5.xml
+D:\Archivos\Code\C#_Workspace\STR_GP_CONVERT_DOCUMENT\STR_GP_CONVERT_DOCUMENT\bin\Debug\Sap.Data.Hana.v4.5.dll.config
