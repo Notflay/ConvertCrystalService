@@ -12,6 +12,9 @@ using Microsoft.Office.Interop.Excel;
 using System.Configuration;
 using Sap.Data.Hana;
 
+using System.Windows.Forms;
+
+
 namespace STR_GP_CONVERT_DOCUMENT
 {
     public partial class Service1 : ServiceBase
@@ -19,6 +22,7 @@ namespace STR_GP_CONVERT_DOCUMENT
         private System.Threading.Timer timer = null;
         private static bool procesoTerminado;
         public static List<string> wizardNames = new List<string>();
+        public static bool exitoso;
         public Service1()
         {
             InitializeComponent();
@@ -47,9 +51,9 @@ namespace STR_GP_CONVERT_DOCUMENT
                     foreach (var wzn in wizardNames)
                     {
                         query.Ejecuta(wzn);
-
-
                     }
+                    if (exitoso)
+                        MessageBox.Show($"El pago fue creado exitosamente. Se almaceno en {ConfigurationManager.AppSettings["rutaDestino"]}", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 procesoTerminado = true;
             }

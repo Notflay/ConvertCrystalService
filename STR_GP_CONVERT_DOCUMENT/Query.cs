@@ -36,7 +36,8 @@ namespace STR_GP_CONVERT_DOCUMENT
             string query = $"SELECT \"WizardName\" FROM OPWZ WHERE DAYS_BETWEEN(\"PmntDate\",NOW()) < {dia}";
 
             pathDest = ConfigurationManager.AppSettings["rutaDestino"];
-
+            if (!pathDest.EndsWith("\\")) 
+                pathDest = pathDest + "\\";
             try
             {
                 hanaConnection.Open();
@@ -48,7 +49,7 @@ namespace STR_GP_CONVERT_DOCUMENT
                     {
                         dynamic a = hdr.GetString(0);
                         string path = pathDest + hdr.GetString(0).ToString();
-                        if (!File.Exists(pathDest + hdr.GetString(0).ToString()))
+                        if (!File.Exists(path + ".txt"))
                             Service1.wizardNames.Add(hdr.GetString(0).ToString());
                     }
                 }
@@ -56,61 +57,60 @@ namespace STR_GP_CONVERT_DOCUMENT
                 hanaConnection.Close();
 
                 if (Service1.wizardNames.Count > 0)
+                
                     return true;
+                
+
                 return false;
+                WriteToFile("No hay pagos en" + dia);
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                WriteToFile(e.Message);
                 if (hanaConnection.State == System.Data.ConnectionState.Open)
                     hanaConnection.Close();
                 return false;
             }
         }
 
-        public void Ejecuta(string wzn)
+        public void Ejecuta(string wizzad)
         {
-            string[] lines = { "fsaf", "zz" };
-            File.WriteAllLines(pathDest + "miArchivo.txt", lines);
 
-            RetrnList(wzn);
-        }
-
-        public List<SBODataField> RetrnList(string wizzad)
-        {
             List<string> datas = new List<string>();
 
             List<string> querys = new List<string>();
-            //querys.Add("STR_PAGOSMASIVOSBCP_CV2_MacroBCP");
-            //querys.Add("STR_PAGOSMASIVOSBCP_DAV2_MacroBCP");
-            querys.Add("STR_PAGOSMASIVOSBCP_CV2_MacroBCP");
-            querys.Add("STR_PAGOSMASIVOSBCP_DAV2_MacroBCP");
-            List<SBODataField> lstSBODataField = new List<SBODataField>();
-            SBODataField data = null;
 
+            querys.Add("STR_PAGOSMASIVOSBCP_CV2_MacroBCP");
+            querys.Add("STR_PAGOSMASIVOSBCP_DAV2_MACROBCPV1");
 
             foreach (var q in querys)
             {
-                var subIdFila = 0;
-                hanaConnection.Open();
-
-                string query = $"CALL {q}('{wizzad}')";
-                cmd = new HanaCommand(query, hanaConnection);
-                hdr = cmd.ExecuteReader();
-
-                while (hdr.Read())
+                try
                 {
-                    string proveedor = "";
-                    string linea = "";
-                    for (int i = 0; i < hdr.FieldCount; i++)
+
+                    hanaConnection.Open();
+
+
+                    string query = $"CALL {q}('{wizzad}')";
+                    cmd = new HanaCommand(query, hanaConnection);
+                    hdr = cmd.ExecuteReader();
+
+                    while (hdr.Read())
                     {
-                        if (!hdr.GetDataTypeName(i).ToString().Equals("Prov_PayeeTaxNo"))
-                            linea += hdr[i].ToString();
-                        else
+                        string proveedor = "";
+                        string linea = "";
+                        for (int i = 0; i < hdr.FieldCount; i++)
                         {
-                            proveedor = hdr[i].ToString();
+                            if (hdr.GetName(i).ToString().Equals("NumDocProvee"))
+                                proveedor = hdr[i].ToString();
+
+                            linea += hdr[i].ToString();
+                        }
+                        if (!string.IsNullOrEmpty(proveedor))
+                        {
                             datas.Add(linea);
 
-                            query = $"CALL STR_PAGOSMASIVOSBCP_DBV2_MacroBCP('{wizzad}','{proveedor}')";
+                            query = $"CALL STR_PAGOSMASIVOSBCP_DBV2_MacroBCP('{wizzad}','{proveedor.Trim()}')";
 
 
                             cmds = new HanaCommand(query, hanaConnection);
@@ -126,71 +126,54 @@ namespace STR_GP_CONVERT_DOCUMENT
                                 datas.Add(linea);
 
                             }
-
-                            linea = string.Empty;
-
+                            linea = "";
                         }
+                        if (!string.IsNullOrEmpty(linea)) datas.Add(linea);
                     }
-                    if (!string.IsNullOrEmpty(linea)) datas.Add(linea);
+                    hanaConnection.Close();
+
+                }
+                catch (Exception e)
+                {
+                    hanaConnection.Close();
+                    WriteToFile($"ERROR: Al crear pago {wizzad} " + e.Message);
+
                 }
 
             }
 
-            File.WriteAllText(pathDest, string.Join("\n", datas));
-
-
-            return lstSBODataField;
-
-        }
-
-        /*
-        public static bool crearArchivo(StringBuilder data, string nombre, string ruta)
-        {
-            try
-            {
-                Encoding utf8WithoutBom = new UTF8Encoding(false);
-
-                if (data is null || string.IsNullOrEmpty(nombre) || string.IsNullOrEmpty(ruta))
-                    throw new ArgumentNullException(data is null ? nameof(data) : string.IsNullOrEmpty(nombre)
-                          ? nameof(nombre) : nameof(ruta), "Null argument in create file method");
-                if (string.IsNullOrEmpty(data.ToString())) throw new ArgumentException($"Empty data: {nombre}");
-                ruta = Path.Combine(ruta, $"{nombre}.txt");
-                File.WriteAllText(ruta, data.ToString(), utf8WithoutBom);
-                return true;
+            if (datas.Count > 0)
+            {                
+                File.WriteAllText(pathDest + wizzad + ".txt", string.Join("\n", datas));
+                Service1.exitoso = true;    
             }
-            catch { throw; }
         }
 
-        public StringBuilder generarData(string wizzad)
+
+
+        public static void WriteToFile(string Message)
         {
-            StringBuilder stringBuilder = null;
-            string fila = string.Empty;
-            try
+            string path = AppDomain.CurrentDomain.BaseDirectory + "\\Logs";
+            if (!Directory.Exists(path))
             {
-
-
-                List<SBODataField> lstDatos = RetrnList(wizzad);
-
-
-                var lstFilasCSV = lstDatos.GroupBy(x => new { x.IDFIla, x.SubIDFIla })
-                    .Select(y => new { ID = y.Key.IDFIla, SubID = y.Key.SubIDFIla, Value = y.Select(s => s.Value).ToList() })
-                    .OrderBy(o => o.ID);
-                //var lstFilasCSVAux = /*lstFilasCSV.Where(w => w.ID != 9) : lstFilasCSV.Where(w => w.ID != 2 && w.ID != 3);
-                //lstFilasCSVAux.ToList().ForEach(l =>
-                //{
-                //    stringBuilder.Append(string.Concat(string.Join(",", l.Value), Environment.NewLine));
-                //});
-                /*
-                lstFilasCSV.ToList().ForEach(l =>
+                Directory.CreateDirectory(path);
+            }
+            string filepath = AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\Service_FacturaCreate_Log_" + DateTime.Now.Date.ToShortDateString().Replace('/', '_') + ".txt";
+            if (!File.Exists(filepath))
+            {
+                using (StreamWriter sw = File.CreateText(filepath))
                 {
-                stringBuilder.Append(l.Value, Environment.NewLine));
-                });
-
-                stringBuilder.Append(lstFilasCSV);
+                    sw.WriteLine(DateTime.Now.ToString() + " - " + Message);
+                }
             }
-            catch { throw; }
-            return stringBuilder;
-        }*/
+            else
+            {
+                using (StreamWriter sw = File.AppendText(filepath))
+                {
+                    sw.WriteLine(DateTime.Now.ToString() + " - " + Message);
+                }
+            }
+        }
 
     }
 }
